@@ -32,4 +32,4 @@ bool serve_http_request(const std::string& request_path, const query_dict_t& req
 //format http responce message based on reply code
 // and appends body 
 // return size of the response
-size_t create_http_responce(std::ostream& reply_os, const std::stringbuf& http_body, int code = 200);
+size_t create_http_responce(std::ostream& reply_os, const std::stringbuf& http_body, int code = 200, bool json = false);

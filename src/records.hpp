@@ -7,8 +7,9 @@
 
 //simple dummy recort type
 struct data_record_t {
-    std::string key;
-    std::string data;
+    std::string type;
+    std::string name;
+	double avg_price;
 };
 
 //special key class for prefix match
@@ -68,7 +69,9 @@ query_results_t query_records(const std::string& search_key, const records_t& re
 data_record_t record_from_html(const std::string& html);
 std::string   record_to_html(const data_record_t& r);
 
+boost::property_tree::ptree record_to_ptree(const data_record_t& pt);
 data_record_t record_from_ptree(const boost::property_tree::ptree& pt);
+
 
 // utils
 std::ostream& operator<<(std::ostream& os, const data_record_t& dr);

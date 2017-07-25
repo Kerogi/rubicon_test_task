@@ -72,7 +72,9 @@
         "future": "cpp",
         "iomanip": "cpp",
         "mutex": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "xlocmon": "cpp",
+        "xloctime": "cpp"
     },
 
     "C_Cpp.intelliSenseEngine": "Default"

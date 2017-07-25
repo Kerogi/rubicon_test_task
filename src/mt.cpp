@@ -10,8 +10,8 @@
 #include "http.hpp"
 
 #include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/xml_parser.hpp>
-#include <boost/property_tree/info_parser.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
 namespace pt = boost::property_tree;
 
 //callback to proccess incoming bytes for curl
@@ -37,7 +37,7 @@ query_results_t query_peer(CURL *curl, const std::string &url, const std::string
 	{
 		CURLcode res;
 		std::stringbuf buf;
-		std::string new_url = url + "?query=" + escape(curl, query_string);
+		std::string new_url = url + "?query=" + escape(curl, query_string) + "&json";
 		curl_easy_setopt(curl, CURLOPT_URL, new_url.c_str());
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
 
@@ -51,15 +51,16 @@ query_results_t query_peer(CURL *curl, const std::string &url, const std::string
 			{
 				//seem ok
 				//try to process the data
-				pt::ptree tree;
-				std::istream sbuf(&buf);
+			    try{
+					boost::property_tree::ptree tree;
+					std::istream sbuf(&buf);
+					boost::property_tree::read_json(sbuf, tree);
 
-				pt::read_xml(sbuf, tree);
-
-				auto result_list_items = tree.get_child("html.body.ul");
-				for (const auto &p : result_list_items)
-				{
-					dst_res.found_records.push_back(std::move(record_from_ptree(p.second)));
+					for(auto& record_kv: tree.get_child("query_results.found_records.")) {
+						dst_res.found_records.push_back(std::move(record_from_ptree(record_kv.second)));
+					}
+				} catch(boost::property_tree::ptree_error const&  ex) {
+					
 				}
 			}
 		}

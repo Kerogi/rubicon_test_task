@@ -63,11 +63,8 @@ bool load_records(const std::string& filename, records_t& dst)
         boost::property_tree::read_xml(filename, tree);
 
         for(auto rest_kv: tree.get_child("restaurants")) {
-            std::string name = rest_kv.second.get<std::string>("name");
-            std::string type = rest_kv.second.get<std::string>("type");
-            double avg_price = rest_kv.second.get<double>("avg_price");
-            data_record_t rec {type, name};
-            dst.insert(make_pair(type, rec));
+            data_record_t rec = record_from_ptree(rest_kv.second);
+            dst.insert(make_pair(rec.type, rec));
         }
     } catch(boost::property_tree::ptree_error const&  ex) {
         return false;

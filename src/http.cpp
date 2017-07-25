@@ -3,6 +3,7 @@
 #include <sstream>
 #include <memory>
 #include "http.hpp"
+#include "json.hpp"
 #include "misc_utils.h"
 #include "records.hpp"
 #include "html.hpp"
@@ -58,8 +59,13 @@ bool  extract_uri_parts(const std::string& uri, std::string& path, query_dict_t&
 		{
 			std::vector<std::string> key_value;
 			split(key_value, query_str, "=");
-			if (key_value.size() > 1)
+
+			if (key_value.size() > 1) {
 				query.insert(std::make_pair(key_value[0], key_value[1]));
+			} else {
+				query.insert(std::make_pair(key_value[0], ""));
+			}
+
 		}
 	}
 
@@ -131,12 +137,16 @@ std::string escape(CURL *curl, const std::string &url)
 // fuction which format basic http responce headers  according to responce code
 // and then append responce body passed as parameter
 // returns length of created responce message
-size_t create_http_responce(std::ostream& reply_os, const std::stringbuf& http_body, int code) {
+size_t create_http_responce(std::ostream& reply_os, const std::stringbuf& http_body, int code, bool json) {
 	std::stringstream ss_http;
 	ss_http << "HTTP/1.1 " << code <<" "<<code_names[code]<< "\r\n";
 	ss_http << "Content-Length: " << http_body.str().length() << "\r\n";
 	ss_http << "Connection: close \r\n";
+	if(json) {
+	ss_http << "Content-Type: application/json \r\n";
+	} else {
 	ss_http << "Content-Type: text/html \r\n";
+	}
 	ss_http << "\r\n";
 	ss_http << http_body.str();
 	reply_os << ss_http.str();
@@ -153,16 +163,22 @@ int serve_query_request(const std::string& request_path, const query_dict_t& req
 		return 400;
 	} 
 
+	bool  to_json = request_query.find("json") != request_query.end();
+
 	std::shared_ptr<CURL> curl(curl_easy_init(), [] (CURL* pcurl) { curl_easy_cleanup(pcurl); });
 	std::string query_string = unescape(curl.get(), query_kv->second);
 	auto session_records = query_records(query_string, g_records_db);
 
-	format_html_query_results_body(responce_body_os, session_records);
+	if (to_json)
+	{
+		format_json_query_results_body(responce_body_os, session_records);
+	}
+	else
+	{
+		format_html_query_results_body(responce_body_os, session_records);
+	}
 	return 200;
 }
-
-
-
 
 //server's proxy request
 int serve_proxy_request(const std::string& request_path, const query_dict_t& request_query, std::ostream& responce_body_os) {
@@ -208,7 +224,9 @@ int serve_proxy_request(const std::string& request_path, const query_dict_t& req
 	}
 
 	//spread a query across
-	query_results_t session_records = do_the_parallel_query(urls, query_string);
+	query_results_t session_records = query_records(query_string, g_records_db);
+	query_results_t peers_records = do_the_parallel_query(urls, query_string);
+	session_records.found_records.insert(session_records.found_records.end(), peers_records.found_records.begin(), peers_records.found_records.end());
 	 
 	format_html_query_results_body(responce_body_os, session_records);
 	return 200;
