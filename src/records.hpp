@@ -5,11 +5,14 @@
 #include <vector>
 #include <boost/property_tree/ptree_fwd.hpp>
 
+
+//simple dummy recort type
 struct data_record_t {
     std::string key;
     std::string data;
 };
 
+//special key class for prefix match
 struct partial_key {
 	std::string key;
 	bool partial_match = false;
@@ -39,36 +42,39 @@ struct partial_key {
 	}
 };
 
+//records map type with key that could find more than one record using prefix
+// map = {
+// 	{"a"    , "data"}, // a < [aa]
+// 	{"aa"	, "data"}, // !([aa] < aa) & !(aa < [aa])   => [aa] = aa
+// 	{"aaa"	, "data"}, // !([aa] < aaa) & !(aaa < [aa]) => [aa] = aaa
+// 	{"aba"	, "data"}, // [aa] < aba
+// 	{"b"	, "data"},
+// 	{"c"	, "data"},
+// };
+// map.equal_range(partial_key(true, "aa")) 
+// will give us iterators at "aa" and "aba"
+// which is lower and upper bound respectively 
 using records_t = std::map<partial_key, data_record_t>;
 
-extern records_t global_records;
-
+//the results of one query on some map
 struct query_results_t {
     std::string query_string;
     std::vector<data_record_t> found_records;
 };
 
-inline std::ostream& operator<<(std::ostream& os, const data_record_t& dr) {
-    return os << "{ key: '"<<dr.key<<"', data: '"<<dr.data<<"' }";
-}
-
-inline std::ostream& operator<<(std::ostream& os, const query_results_t& qr) {
-	if(qr.found_records.empty()){
-		os << "{ nothing found for '"<<qr.query_string<<"'}";
-	} else {
-		os << "{ for '"<<qr.query_string<<"' were found:\n";
-		for(const auto& dr: qr.found_records) {
-			os << '\t' << dr << '\n';
-		}
-		os << "}";
-	}
-	return os;
-}
-
+//try's find all prefix matches in specified map
 query_results_t query_records(const std::string& search_key, const records_t& records);
 
-data_record_t record_from_html(const std::string& html);
 
-std::string record_to_html(const data_record_t& r);
+//serializations 
+data_record_t record_from_html(const std::string& html);
+std::string   record_to_html(const data_record_t& r);
 
 data_record_t record_from_ptree(const boost::property_tree::ptree& pt);
+
+// utils
+std::ostream& operator<<(std::ostream& os, const data_record_t& dr);
+std::ostream& operator<<(std::ostream& os, const query_results_t& qr);
+
+//global variable oto imitate a records db
+extern records_t g_records_db;

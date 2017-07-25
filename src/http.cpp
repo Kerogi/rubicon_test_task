@@ -6,10 +6,10 @@
 #include "misc_utils.h"
 #include "records.hpp"
 #include "html.hpp"
-
-
 #include "mt.hpp"
 
+//global dict of used codes
+// everything els is ""
 std::map<int, std::string> code_names = {
   {200, "OK"},
   {501, "Not Implemented"},
@@ -20,7 +20,8 @@ std::map<int, std::string> code_names = {
 };
 
 
-
+//utility function which extracts from http requests start line a url part and return true
+// or return false and writes to responce_body_os stream a formatted (html) error message
 bool extract_uri(const std::string& starting_line, std::string& url, std::ostream& responce_body_os, int& responce_code)
 {
 	if (responce_code != 0) return false;
@@ -35,14 +36,13 @@ bool extract_uri(const std::string& starting_line, std::string& url, std::ostrea
 		format_html_body(responce_body_os, "Filed to find the end of URI", responce_code);
 		return false;
 	}
-	std::cout <<"length: "<<starting_line.length()<<std::endl;
-	std::cout <<"url_end: "<<url_end<<std::endl;
-
 
 	url = starting_line.substr(4, url_end - 4 - 1 );
 	return true;
 }
 
+//utility function which extracts from url a path part and query part (as a dict)
+// or return false and writes to responce_body_os stream a formatted (html) error message
 bool  extract_uri_parts(const std::string& uri, std::string& path, query_dict_t& query, std::ostream& responce_body_os, int& responce_code ){
 	if (responce_code != 0) return false;
 	size_t query_part_start = uri.find_first_of('?');
@@ -66,6 +66,9 @@ bool  extract_uri_parts(const std::string& uri, std::string& path, query_dict_t&
 	return true;
 }
 
+
+//validates request if ok return true
+//if not writes http error responce
 bool validate_http_request(const std::string& starting_line, std::string& out_request_path, query_dict_t& out_request_query, std::ostream& reply_os)
 {
 	int responce_code = 0;
@@ -84,9 +87,10 @@ bool validate_http_request(const std::string& starting_line, std::string& out_re
 		format_html_body(responce_body_os, "Method other than GET is not supported", responce_code);
 		res =  false;
 	} 
-	//if we still ok try to extravk some stuf from requests start line
+	//if we still ok try to extract some stuff from requests start line
 	if(res) {
 		std::string url;
+		//chain other functions 
 		res = extract_uri(starting_line, url, responce_body_os, responce_code) &&
 			extract_uri_parts(url, out_request_path, out_request_query, responce_body_os, responce_code);
 	} else {
@@ -126,7 +130,7 @@ std::string escape(CURL *curl, const std::string &url)
 
 // fuction which format basic http responce headers  according to responce code
 // and then append responce body passed as parameter
-// retunrs length of created responce message
+// returns length of created responce message
 size_t create_http_responce(std::ostream& reply_os, const std::stringbuf& http_body, int code) {
 	std::stringstream ss_http;
 	ss_http << "HTTP/1.1 " << code <<" "<<code_names[code]<< "\r\n";
@@ -151,16 +155,16 @@ int serve_query_request(const std::string& request_path, const query_dict_t& req
 
 	std::shared_ptr<CURL> curl(curl_easy_init(), [] (CURL* pcurl) { curl_easy_cleanup(pcurl); });
 	std::string query_string = unescape(curl.get(), query_kv->second);
-	auto session_records = query_records(query_string, global_records);
+	auto session_records = query_records(query_string, g_records_db);
 
 	format_html_query_results_body(responce_body_os, session_records);
 	return 200;
 }
 
 
-extern dest_map_t global_dest_map;
+extern dest_map_t g_destinations_db;
 
-//server's prosy request
+//server's proxy request
 int serve_proxy_request(const std::string& request_path, const query_dict_t& request_query, std::ostream& responce_body_os) {
 	auto query_kv = request_query.find("query");
 	if (query_kv == request_query.end())
@@ -187,11 +191,13 @@ int serve_proxy_request(const std::string& request_path, const query_dict_t& req
 		return 400;
 	}
 
+
+	//find destination from our DB
 	std::vector<std::string> urls;
 	for (const auto &dest_label : destinations)
 	{
-		dest_map_t::iterator dest_it = global_dest_map.find(dest_label);
-		if (dest_it != global_dest_map.end())
+		dest_map_t::iterator dest_it = g_destinations_db.find(dest_label);
+		if (dest_it != g_destinations_db.end())
 		{
 			urls.push_back(dest_it->second);
 		}
@@ -202,6 +208,7 @@ int serve_proxy_request(const std::string& request_path, const query_dict_t& req
 		return 400;
 	}
 
+	//spread a query across
 	query_results_t session_records = do_the_parallel_query(urls, query_string);
 	 
 	format_html_query_results_body(responce_body_os, session_records);
@@ -213,6 +220,8 @@ bool serve_http_request(const std::string& request_path, const query_dict_t& req
 
 	std::cout<<"request_path: "<<request_path<<std::endl;
 	std::cout<<"request_query: "<<request_query<<std::endl;
+
+	//request handler maps
 	static std::map<std::string, request_handler_t> request_handlers = {
 		{"/restorans", serve_query_request},
 		{"/multiproxy", serve_proxy_request},
@@ -224,11 +233,14 @@ bool serve_http_request(const std::string& request_path, const query_dict_t& req
 	int responce_code = 0;
 
 	if(handler != request_handlers.end()) {
+		//call a request handler
 		responce_code = handler->second(request_path, request_query, responce_body_os);
 	} else  {
 		format_html_body(responce_body_os, "Cound not find what to do with '<b>"+request_path+"</b>'", 404);
 		responce_code = 404;
 	}
+	//basing on responce code (set manually or form request handler)
+	// create a http responce message with corresponding headers
 	create_http_responce(reply_os, responce_body_buff, responce_code);
 	return responce_code == 200;
 }
