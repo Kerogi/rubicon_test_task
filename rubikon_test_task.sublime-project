@@ -1,0 +1,24 @@
+{
+	"folders":
+	[
+		{
+			"path": "."
+		}
+	],
+	 "build_systems":
+    [
+        {
+            "name": "WLS make",
+            "cmd": "bash -c make",
+            "working_dir": "${project_path:${folder}}",
+            "shell":"true"
+        }
+    ],
+    "settings":
+    {
+          "sublimegdb_workingdir": "${folder:${project_path:rubikon_test_task}}",
+         // NOTE: You MUST provide --interpreter=mi for the plugin to work
+          "sublimegdb_commandline": "bash -c 'gdb --interpreter=mi ./rubikon_test_task'"
+   
+    }
+}
