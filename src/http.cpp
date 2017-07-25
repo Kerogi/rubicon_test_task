@@ -7,7 +7,7 @@
 #include "records.hpp"
 #include "html.hpp"
 #include "mt.hpp"
-
+#include "settings.hpp"
 //global dict of used codes
 // everything els is ""
 std::map<int, std::string> code_names = {
@@ -162,7 +162,7 @@ int serve_query_request(const std::string& request_path, const query_dict_t& req
 }
 
 
-extern dest_map_t g_destinations_db;
+
 
 //server's proxy request
 int serve_proxy_request(const std::string& request_path, const query_dict_t& request_query, std::ostream& responce_body_os) {
@@ -219,7 +219,7 @@ bool serve_http_request(const std::string& request_path, const query_dict_t& req
 
 	//request handler maps
 	static std::map<std::string, request_handler_t> request_handlers = {
-		{"/restorans", serve_query_request},
+		{"/restaurant", serve_query_request},
 		{"/multiproxy", serve_proxy_request},
 	};
 

@@ -6,12 +6,9 @@
 #include "records.hpp"
 #include "html.hpp"
 #include "http.hpp"
+#include "settings.hpp"
 
 using boost::asio::ip::tcp;
-
-//global data bases
-dest_map_t g_destinations_db;
-records_t g_records_db;
 
 using namespace std;
 
@@ -75,7 +72,7 @@ void session(tcp::socket sock)
 
 //basic server function which listens on specific port and accepts connection
 // then spawn new worker(fork or thread) and handles the connection
-void server(boost::asio::io_service &io_service, unsigned short port, bool use_fork = true)
+void server(boost::asio::io_service &io_service, unsigned short port, bool use_fork = false)
 {
 	cout << "server startet, serving on port: " << port << ", using " << ((use_fork) ? "fork" : "threads") << " for connection/sessions processing" << endl;
 	tcp::acceptor acceptor(io_service, tcp::endpoint(tcp::v4(), port));
@@ -108,29 +105,37 @@ void server(boost::asio::io_service &io_service, unsigned short port, bool use_f
 	}
 }
 
+
 int main(int argc, char *argv[])
 {
 	try
 	{
-		if (argc <= 1)
+		if (argc < 3)
 		{
-			std::cerr << "Usage: rubicon_test_task <port> [fork?]\n";
+			std::cerr << "Usage: rubicon_test_task <port> <data.xml> [peer.xml] [-fork]" << endl;
 			return 1;
 		}
 
-		g_destinations_db["A"] = "localhost:12301/restorans";
-		g_destinations_db["B"] = "localhost:12302/restorans";
-		g_destinations_db["C"] = "localhost:12303/restorans";
-
-		g_records_db["Italian"] = {"Italian", "Italian rest 1"};
-		g_records_db["Itolian"] = {"Itolian", "Itolian rest 2"};
-		g_records_db["Itulian"] = {"Itulian", "Itulian rest 3"};
-		g_records_db["Itilian"] = {"Itilian", "Itilian rest 4"};
+		cout << "loadind data" << endl;
+		std::string data_filename(argv[2]);
+		if(!load_records(data_filename, g_records_db)) {
+			std::cerr << "Failed to load peers list from: "<<data_filename<< endl;
+			return 1;
+		}
+		cout << "loaded "<<g_records_db.size()<<" data records" << endl;
+		if(argc > 3) {
+			cout << "loadind peer list" << endl;
+			std::string peers_filename(argv[3]);
+			if(!load_destination(peers_filename, g_destinations_db)) {
+				std::cerr << "Failed to load peers list from: "<<peers_filename<< endl;
+				std::cerr << "Multiproxy feature will not work properly"<< endl;
+			}
+			cout << "loaded "<<g_destinations_db.size()<<" peer" << endl;
+		}
 
 		boost::asio::io_service io_service;
-		cout << "staring server " << argc << endl;
-
-		server(io_service, std::atoi(argv[1]), !(argc > 2));
+		cout << "staring server " << endl;
+		server(io_service, std::atoi(argv[1]), (argc > 4));
 	}
 	catch (std::exception &e)
 	{

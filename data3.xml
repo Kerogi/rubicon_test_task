@@ -1,0 +1,27 @@
+<restaurants>
+    <restaurant>
+        <name>Di Momo</name>
+        <type>Italian</type>
+        <avg_price>60</avg_price>
+    </restaurant>
+    <restaurant>
+        <name>Jon-Pau</name>
+        <type>Chinise</type>
+        <avg_price>70</avg_price>
+    </restaurant>
+    <restaurant>
+        <name>Sushiton</name>
+        <type>Japanese</type>
+        <avg_price>70</avg_price>
+    </restaurant>
+    <restaurant>
+        <name>Laoway</name>
+        <type>Chinise</type>
+        <avg_price>40</avg_price>
+    </restaurant>
+     <restaurant>
+        <name>Borch</name>
+        <type>Russian</type>
+        <avg_price>60</avg_price>
+    </restaurant>
+</restaurants>

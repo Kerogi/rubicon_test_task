@@ -3,6 +3,8 @@
 #include <sstream>
 #include <boost/property_tree/ptree.hpp>
 
+records_t g_records_db;
+
 std::ostream& operator<<(std::ostream& os, const data_record_t& dr) {
     return os << "{ key: '"<<dr.key<<"', data: '"<<dr.data<<"' }";
 }

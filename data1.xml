@@ -1,0 +1,22 @@
+<restaurants>
+    <restaurant>
+        <name>Pimpo Mimpo</name>
+        <type>Italian</type>
+        <avg_price>90</avg_price>
+    </restaurant>
+    <restaurant>
+        <name>Il Familia</name>
+        <type>Italian</type>
+        <avg_price>100</avg_price>
+    </restaurant>
+    <restaurant>
+        <name>Burning Tuches</name>
+        <type>Mexican</type>
+        <avg_price>50</avg_price>
+    </restaurant>
+    <restaurant>
+        <name>Euro house</name>
+        <type>European</type>
+        <avg_price>60</avg_price>
+    </restaurant>
+</restaurants>

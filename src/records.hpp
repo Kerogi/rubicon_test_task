@@ -5,7 +5,6 @@
 #include <vector>
 #include <boost/property_tree/ptree_fwd.hpp>
 
-
 //simple dummy recort type
 struct data_record_t {
     std::string key;
@@ -54,7 +53,7 @@ struct partial_key {
 // map.equal_range(partial_key(true, "aa")) 
 // will give us iterators at "aa" and "aba"
 // which is lower and upper bound respectively 
-using records_t = std::map<partial_key, data_record_t>;
+using records_t = std::multimap<partial_key, data_record_t>;
 
 //the results of one query on some map
 struct query_results_t {
@@ -64,7 +63,6 @@ struct query_results_t {
 
 //try's find all prefix matches in specified map
 query_results_t query_records(const std::string& search_key, const records_t& records);
-
 
 //serializations 
 data_record_t record_from_html(const std::string& html);
