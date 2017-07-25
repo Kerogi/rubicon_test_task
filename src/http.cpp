@@ -170,6 +170,10 @@ int serve_static_file(const std::string& request_path, std::ostream& responce_bo
 
 //server's simple search query 
 int serve_query_request(const std::string& request_path, const query_dict_t& request_query, std::ostream& responce_body_os) {
+	if (g_records_db.empty()) {
+		format_html_body(responce_body_os, "Data DB is empty cant serv a query request", 500);
+		return 500;
+	}
 	auto query_kv = request_query.find("query");
 	if (query_kv == request_query.end())
 	{
@@ -182,7 +186,7 @@ int serve_query_request(const std::string& request_path, const query_dict_t& req
 	std::shared_ptr<CURL> curl(curl_easy_init(), [] (CURL* pcurl) { curl_easy_cleanup(pcurl); });
 	std::string query_string = unescape(curl.get(), query_kv->second);
 	auto session_records = query_records(query_string, g_records_db);
-
+	std::cout<<"found "<<session_records.found_records.size()<<" records for query_string='"<<query_string<<"'"<<std::endl;
 	if (to_json)
 	{
 		format_json_query_results_body(responce_body_os, session_records);
@@ -196,50 +200,62 @@ int serve_query_request(const std::string& request_path, const query_dict_t& req
 
 //server's proxy request
 int serve_proxy_request(const std::string& request_path, const query_dict_t& request_query, std::ostream& responce_body_os) {
+
+	if (g_destinations_db.empty()) {
+		format_html_body(responce_body_os, "Peers list is empty cant serv as a mulriproxy request", 500);
+		return 500;
+	}
 	auto query_kv = request_query.find("query");
 	if (query_kv == request_query.end())
 	{
 		format_html_body(responce_body_os, "Could not find query part in reques", 400);
 		return 400;
 	} 
-	auto dest_kv = request_query.find("dest");
-	if (dest_kv == request_query.end())
-	{
-		format_html_body(responce_body_os, "Could not find destinations part in request", 400);
-		return 400;
-	} 
-
-	std::shared_ptr<CURL> curl(curl_easy_init(), [] (CURL* pcurl) { curl_easy_cleanup(pcurl); });
-	std::string query_string = unescape(curl.get(), query_kv->second);
-	std::string destinations_string = unescape(curl.get(), dest_kv->second);
-
-	std::vector<std::string> destinations;
-	split(destinations, destinations_string, ",");
-
-	if(destinations.empty()) {
-		format_html_body(responce_body_os, "Empty destination parameter", 400);
-		return 400;
-	}
-
-	//find destination from our DB
 	std::vector<std::string> urls;
-	for (const auto &dest_label : destinations)
-	{
-		dest_map_t::iterator dest_it = g_destinations_db.find(dest_label);
-		if (dest_it != g_destinations_db.end())
-		{
-			urls.push_back(dest_it->second);
+	auto dest_kv = request_query.find("dest");
+	std::shared_ptr<CURL> curl(curl_easy_init(), [] (CURL* pcurl) { curl_easy_cleanup(pcurl); });
+	if (dest_kv != request_query.end())
+	{	
+		//dest parameter is present so try to 
+		//	match destinations in our DB
+		std::string destinations_string = unescape(curl.get(), dest_kv->second);
+
+		std::vector<std::string> destinations;
+		split(destinations, destinations_string, ",");
+
+		if(destinations.empty()) {
+			format_html_body(responce_body_os, "Parameter 'dest' is empty", 400);
+			return 400;
 		}
+
+		for (const auto &dest_label : destinations)
+		{
+			dest_map_t::iterator dest_it = g_destinations_db.find(dest_label);
+			if (dest_it != g_destinations_db.end())
+			{
+				urls.push_back(dest_it->second);
+			}
+		}
+		if(urls.empty()) {
+			format_html_body(responce_body_os, "Could not match any of specified destinations by dest: "+destinations_string , 400);
+			return 400;
+		}
+	} else {
+		//serv to all knows destinations
+		for (const auto &dest_kv : g_destinations_db)
+			urls.push_back(dest_kv.second);
 	}
 	
-	if(urls.empty()) {
-		format_html_body(responce_body_os, "Could not match any of specified destinations", 400);
-		return 400;
-	}
+	std::string query_string = unescape(curl.get(), query_kv->second);
+	
 
 	//spread a query across
-	query_results_t session_records = query_records(query_string, g_records_db);
+	query_results_t session_records;
+	if(!g_records_db.empty())//legacy mode when nweb could server in both modes data nad proxy
+		session_records = query_records(query_string, g_records_db);
+
 	query_results_t peers_records = do_the_parallel_query(urls, query_string);
+
 	session_records.found_records.insert(session_records.found_records.end(), peers_records.found_records.begin(), peers_records.found_records.end());
 	 
 	format_html_query_results_body(responce_body_os, session_records);

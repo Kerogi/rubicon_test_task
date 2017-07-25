@@ -25,10 +25,11 @@ size_t write_data(void *buffer, size_t size, size_t nmemb, void *userp)
 }
 
 //fetch result from peer server
-query_results_t query_peer(CURL *curl, const std::string &url, const std::string &query_string )
+std::pair<int, query_results_t> query_peer(CURL *curl, const std::string &url, const std::string &query_string )
 {
 	query_results_t dst_res {query_string, {} };
 	std::shared_ptr<CURL> local_curl;
+	int response_code = -1;
 	if (nullptr == curl) {
 		local_curl.reset(curl_easy_init(), [] (CURL* pcurl) { curl_easy_cleanup(pcurl); });
 		curl = local_curl.get();
@@ -45,7 +46,6 @@ query_results_t query_peer(CURL *curl, const std::string &url, const std::string
 		res = curl_easy_perform(curl);
 		if (res == CURLE_OK)
 		{
-			long response_code;
 			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 			if (response_code == 200)
 			{
@@ -56,8 +56,9 @@ query_results_t query_peer(CURL *curl, const std::string &url, const std::string
 					std::istream sbuf(&buf);
 					boost::property_tree::read_json(sbuf, tree);
 
-					for(auto& record_kv: tree.get_child("query_results.found_records.")) {
-						dst_res.found_records.push_back(std::move(record_from_ptree(record_kv.second)));
+					for(auto& record_kv: tree.get_child("query_results.found_records")) {
+						if(record_kv.first == "record")
+							dst_res.found_records.push_back(std::move(record_from_ptree(record_kv.second)));
 					}
 				} catch(boost::property_tree::ptree_error const&  ex) {
 					
@@ -65,7 +66,7 @@ query_results_t query_peer(CURL *curl, const std::string &url, const std::string
 			}
 		}
 	}
-	return dst_res;
+	return { response_code, dst_res };
 }
 
 query_results_t do_the_parallel_query(const std::vector<std::string>& urls, const std::string& query_string)
@@ -85,7 +86,7 @@ query_results_t do_the_parallel_query(const std::vector<std::string>& urls, cons
 
 	//setup sync vars
 	size_t 					job_start_counter = 0;
-	size_t					job_done_counter=0;
+	std::vector<int>        job_results;
 	std::condition_variable cv_job_done;
 	std::mutex				m_results;
 	bool					notified = false;
@@ -96,9 +97,9 @@ query_results_t do_the_parallel_query(const std::vector<std::string>& urls, cons
     auto job_func = [&] (const std::string url, const std::string query_string) {
         auto peer_result = query_peer(NULL, url, query_string);
         std::unique_lock<std::mutex> lock(m_results);
-        result.found_records.insert(result.found_records.end(), peer_result.found_records.begin(), peer_result.found_records.end());
+        result.found_records.insert(result.found_records.end(), peer_result.second.found_records.begin(), peer_result.second.found_records.end());
         notified = true;
-        ++job_done_counter;
+        job_results.push_back(peer_result.first);
         cv_job_done.notify_one();
     };
 
@@ -107,20 +108,22 @@ query_results_t do_the_parallel_query(const std::vector<std::string>& urls, cons
 	for (const auto &url : urls)
 	{
 	    ++job_start_counter;
+		std::cout<<"sent "<<job_start_counter<<" of "<<urls.size()<<" requests: "<<url<<", "<<query_string<<std::endl;
 	    ios.post(std::bind(job_func, url, query_string));
 	}
 
-
+	size_t rec_count = result.found_records.size();
 	if(job_start_counter>0)
 	{
 		//wait all jobs done
 		std::unique_lock<std::mutex> lock(m_results);
 		// check that all done
-		while(job_start_counter != job_done_counter) { 
+		while(job_start_counter != job_results.size()) { 
 			// still has some to do
 			while(!notified) 
-				cv_job_done.wait(lock); //sleep
-			std::cout<<"Got "<<job_done_counter<<" of "<<job_start_counter<<" results"<<std::endl;
+				cv_job_done.wait(lock); //sleep and unlock, wakeup and lock
+			std::cout<<"got "<<job_results.size()<<" of "<<job_start_counter<<" results ["<<job_results.back()<<"] (+"<<result.found_records.size() - rec_count<<" records)"<<std::endl;
+			rec_count=result.found_records.size();
 			notified = false;
 		}
 		// stop pool 

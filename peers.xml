@@ -1,14 +1,18 @@
 <neighbors>
     <peer>
-        <name>sect2</name>
+        <name>europe</name>
+        <url>localhost:12301/restaurant</url>
+    </peer>
+    <peer>
+        <name>asia</name>
         <url>localhost:12302/restaurant</url>
     </peer>
     <peer>
-        <name>sect3</name>
+        <name>ind</name>
         <url>localhost:12303/restaurant</url>
     </peer>
     <peer>
-        <name>sect4</name>
+        <name>latin</name>
         <url>localhost:12304/restaurant</url>
     </peer>
 </neighbors>

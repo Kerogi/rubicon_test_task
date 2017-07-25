@@ -112,25 +112,32 @@ int main(int argc, char *argv[])
 	{
 		if (argc < 3)
 		{
-			std::cerr << "Usage: rubicon_test_task <port> <data.xml> [peer.xml] [-fork]" << endl;
+			std::cerr << "Usage: nweb <port> <data|proxy> <data.xml|peers.xml> [-fork]" << endl;
 			return 1;
 		}
 
-		cout << "loadind data" << endl;
-		std::string data_filename(argv[2]);
-		if(!load_records(data_filename, g_records_db)) {
-			std::cerr << "Failed to load peers list from: "<<data_filename<< endl;
-			return 1;
-		}
-		cout << "loaded "<<g_records_db.size()<<" data records" << endl;
-		if(argc > 3) {
-			cout << "loadind peer list" << endl;
-			std::string peers_filename(argv[3]);
-			if(!load_destination(peers_filename, g_destinations_db)) {
-				std::cerr << "Failed to load peers list from: "<<peers_filename<< endl;
-				std::cerr << "Multiproxy feature will not work properly"<< endl;
+		std::string mode(argv[2]);
+		if (mode == "data") {
+			cout << "server will work in data mode" << endl;
+			cout << "loadind data" << endl;
+			std::string filename(argv[3]);
+			if(!load_records(filename, g_records_db)) {
+				std::cerr << "failed to load data rom file: "<<filename<< endl;
+				return 1;
 			}
-			cout << "loaded "<<g_destinations_db.size()<<" peer" << endl;
+			cout << "loaded "<<g_records_db.size()<<" data records" << endl;
+		} else if (mode == "proxy") {
+			cout << "server will work in proxy mode" << endl;
+			cout << "loadind peer list" << endl;
+			std::string filename(argv[3]);
+			if(!load_destination(filename, g_destinations_db)) {
+				std::cerr << "failed to load peers list from: "<<filename<< endl;
+				return 1;
+			}
+			cout << "loaded "<<g_destinations_db.size()<<" peers" << endl;
+		} else {
+			std::cerr << "unknown mode: "<<mode<< endl;
+			return 1;
 		}
 
 		boost::asio::io_service io_service;

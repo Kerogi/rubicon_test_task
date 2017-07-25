@@ -1,0 +1,9 @@
+server will work in data mode
+loadind data
+loaded 3 data records
+staring server 
+server startet, serving on port: 12304, using threads for connection/sessions processing
+accepted connection from: 127.0.0.1:9349
+
+
+>>>Request: GET /restaurant?query=I&json HTTP/1.1

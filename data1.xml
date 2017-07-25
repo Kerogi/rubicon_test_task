@@ -10,13 +10,38 @@
         <avg_price>100</avg_price>
     </restaurant>
     <restaurant>
-        <name>Burning Tuches</name>
-        <type>Mexican</type>
-        <avg_price>50</avg_price>
+        <name>EuroBurger</name>
+        <type>European</type>
+        <avg_price>60</avg_price>
     </restaurant>
     <restaurant>
-        <name>Euro house</name>
+        <name>Chelentano</name>
+        <type>Italian</type>
+        <avg_price>70</avg_price>
+    </restaurant>
+     <restaurant>
+        <name>Zkvarki</name>
         <type>European</type>
+        <avg_price>10</avg_price>
+    </restaurant>
+    <restaurant>
+        <name>Ambrosia</name>
+        <type>European</type>
+        <avg_price>270</avg_price>
+    </restaurant>
+    <restaurant>
+        <name>Formoza</name>
+        <type>European</type>
+        <avg_price>70</avg_price>
+    </restaurant>
+    <restaurant>
+        <name>Di Momo</name>
+        <type>Italian</type>
+        <avg_price>60</avg_price>
+    </restaurant>
+    <restaurant>
+        <name>Vareniki</name>
+        <type>Russian</type>
         <avg_price>60</avg_price>
     </restaurant>
 </restaurants>

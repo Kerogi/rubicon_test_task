@@ -1,27 +1,17 @@
 <restaurants>
     <restaurant>
-        <name>Govno Zgrach</name>
-        <type>European</type>
-        <avg_price>10</avg_price>
-    </restaurant>
-    <restaurant>
-        <name>Ambrosia</name>
-        <type>European</type>
-        <avg_price>270</avg_price>
-    </restaurant>
-    <restaurant>
-        <name>Formoza</name>
-        <type>European</type>
-        <avg_price>70</avg_price>
-    </restaurant>
-    <restaurant>
-        <name>Hokomasa</name>
-        <type>Japanise</type>
-        <avg_price>40</avg_price>
-    </restaurant>
-     <restaurant>
         <name>El Bimbo</name>
         <type>Mexican</type>
         <avg_price>60</avg_price>
+    </restaurant>
+    <restaurant>
+        <name>Burning Tuches</name>
+        <type>Mexican</type>
+        <avg_price>50</avg_price>
+    </restaurant>
+    <restaurant>
+        <name>Indian Burittos</name>
+        <type>Inidian</type>
+        <avg_price>40</avg_price>
     </restaurant>
 </restaurants>
