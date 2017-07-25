@@ -22,12 +22,12 @@ std::string escape( CURL *curl, const std::string& url);
 //validate request start line
 // if ok returs true
 // if not return false and writes formatted (http+html) error message to reply_os stream
-bool validate_http_request(const std::string& starting_line, std::string& out_request_path, query_dict_t& out_request_query, std::ostream& reply_os);
+bool validate_http_request(const std::string& starting_line, std::string& out_request_path, query_dict_t& out_request_query, std::ostream& reply_os, size_t &reply_size);
 
 //servers request
 // if ok returs true, and writes formatted (http+html) response message to reply_os stream
 // if not return false and writes formatted (http+html) error message to reply_os stream
-bool serve_http_request(const std::string& request_path, const query_dict_t& request_query, std::ostream& reply_os);
+bool serve_http_request(const std::string& request_path, const query_dict_t& request_query, std::ostream& reply_os, size_t &reply_size);
 
 //format http responce message based on reply code
 // and appends body 

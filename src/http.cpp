@@ -69,7 +69,7 @@ bool  extract_uri_parts(const std::string& uri, std::string& path, query_dict_t&
 
 //validates request if ok return true
 //if not writes http error responce
-bool validate_http_request(const std::string& starting_line, std::string& out_request_path, query_dict_t& out_request_query, std::ostream& reply_os)
+bool validate_http_request(const std::string& starting_line, std::string& out_request_path, query_dict_t& out_request_query, std::ostream& reply_os, size_t& reply_size)
 {
 	int responce_code = 0;
 	bool res = true;
@@ -95,7 +95,7 @@ bool validate_http_request(const std::string& starting_line, std::string& out_re
 			extract_uri_parts(url, out_request_path, out_request_query, responce_body_os, responce_code);
 	} else {
 		//not ok, create http responce with html error message body from prev functions
-		create_http_responce(reply_os, responce_body_buff, responce_code);
+		reply_size = create_http_responce(reply_os, responce_body_buff, responce_code);
 	}
 	return res;
 }
@@ -191,7 +191,6 @@ int serve_proxy_request(const std::string& request_path, const query_dict_t& req
 		return 400;
 	}
 
-
 	//find destination from our DB
 	std::vector<std::string> urls;
 	for (const auto &dest_label : destinations)
@@ -216,10 +215,7 @@ int serve_proxy_request(const std::string& request_path, const query_dict_t& req
 }
 
 // basic http request handler
-bool serve_http_request(const std::string& request_path, const query_dict_t& request_query, std::ostream& reply_os) {
-
-	std::cout<<"request_path: "<<request_path<<std::endl;
-	std::cout<<"request_query: "<<request_query<<std::endl;
+bool serve_http_request(const std::string& request_path, const query_dict_t& request_query, std::ostream& reply_os, size_t& reply_size) {
 
 	//request handler maps
 	static std::map<std::string, request_handler_t> request_handlers = {
@@ -241,6 +237,6 @@ bool serve_http_request(const std::string& request_path, const query_dict_t& req
 	}
 	//basing on responce code (set manually or form request handler)
 	// create a http responce message with corresponding headers
-	create_http_responce(reply_os, responce_body_buff, responce_code);
+	reply_size = create_http_responce(reply_os, responce_body_buff, responce_code);
 	return responce_code == 200;
 }
