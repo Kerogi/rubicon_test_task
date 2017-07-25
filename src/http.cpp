@@ -6,13 +6,10 @@
 #include "misc_utils.h"
 #include "records.hpp"
 #include "html.hpp"
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/xml_parser.hpp>
-#include <boost/property_tree/info_parser.hpp>
-#include <boost/asio/io_service.hpp>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
+
+
+#include "mt.hpp"
+
 std::map<int, std::string> code_names = {
   {200, "OK"},
   {501, "Not Implemented"},
@@ -22,7 +19,7 @@ std::map<int, std::string> code_names = {
   {400, "Bad Request"}
 };
 
-namespace pt = boost::property_tree;
+
 
 bool extract_uri(const std::string& starting_line, std::string& url, std::ostream& responce_body_os, int& responce_code)
 {
@@ -160,58 +157,6 @@ int serve_query_request(const std::string& request_path, const query_dict_t& req
 	return 200;
 }
 
-size_t write_data(void *buffer, size_t size, size_t nmemb, void *userp)
-{
-	size_t realsize = size * nmemb;
-	std::stringbuf *pbuf = (std::stringbuf *)userp;
-	if (realsize)
-		pbuf->sputn((char *)buffer, realsize);
-	return realsize;
-}
-
-query_results_t pull_one_url(CURL *curl, const std::string &url, const std::string &query )
-{
-	query_results_t dst_res {query, {} };
-	std::shared_ptr<CURL> local_curl;
-	if (nullptr == curl) {
-		local_curl.reset(curl_easy_init(), [] (CURL* pcurl) { curl_easy_cleanup(pcurl); });
-		curl = local_curl.get();
-	}
-	if (curl)
-	{
-		CURLcode res;
-		std::stringbuf buf;
-		std::string new_url = url + "?query=" + escape(curl, query);
-		curl_easy_setopt(curl, CURLOPT_URL, new_url.c_str());
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&buf);
-		res = curl_easy_perform(curl);
-		if (res == CURLE_OK)
-		{
-			long response_code;
-			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-			if (response_code == 200)
-			{
-				std::cout << buf.str() << std::endl;
-
-				// Create empty property tree object
-				pt::ptree tree;
-				std::istream sbuf(&buf);
-				// Parse the XML into the property tree.
-				pt::read_xml(sbuf, tree);
-
-				auto result_list_items = tree.get_child("html.body.ul");
-				std::cout << LBL(result_list_items.size()) << std::endl;
-				for (const auto &p : result_list_items)
-				{
-					dst_res.found_records.push_back(std::move(record_from_ptree(p.second)));
-				}
-			}
-		}
-	}
-	return dst_res;
-}
 
 extern dest_map_t global_dest_map;
 
@@ -233,7 +178,6 @@ int serve_proxy_request(const std::string& request_path, const query_dict_t& req
 	std::shared_ptr<CURL> curl(curl_easy_init(), [] (CURL* pcurl) { curl_easy_cleanup(pcurl); });
 	std::string query_string = unescape(curl.get(), query_kv->second);
 	std::string destinations_string = unescape(curl.get(), dest_kv->second);
-	query_results_t session_records;
 
 	std::vector<std::string> destinations;
 	split(destinations, destinations_string, ",");
@@ -242,53 +186,23 @@ int serve_proxy_request(const std::string& request_path, const query_dict_t& req
 		format_html_body(responce_body_os, "Empty destination parameter", 400);
 		return 400;
 	}
-    boost::asio::io_service ios;
-	std::vector<std::thread> pool;
-	boost::asio::io_service::work work(ios);
-	auto thread_func = [&ios] (){ios.run();};
-	for(size_t i =0; i < std::min(size_t(4),destinations.size()); ++i){
-		pool.push_back(std::move(std::thread(thread_func)));
-	}
 
-	size_t 					found_destinations = 0;
-	size_t					job_done_counter=0;
-	std::condition_variable cond_all_done;
-	std::mutex				m_results;
-	bool					notified = false;
-	bool					done = false;
+	std::vector<std::string> urls;
 	for (const auto &dest_label : destinations)
 	{
 		dest_map_t::iterator dest_it = global_dest_map.find(dest_label);
 		if (dest_it != global_dest_map.end())
 		{
-			++found_destinations;
-			ios.post([&] () {
-				auto peer_result = pull_one_url(NULL, dest_it->second, query_string);
-				std::unique_lock<std::mutex> lock(m_results);
-				session_records.found_records.insert(session_records.found_records.end(), peer_result.found_records.begin(), peer_result.found_records.end());
-				notified = true;
-				++job_done_counter;
-				cond_all_done.notify_one();
-			});
+			urls.push_back(dest_it->second);
 		}
 	}
-
-	if(found_destinations>0)
-	{
-		std::unique_lock<std::mutex> lock(m_results);
-		while(found_destinations != job_done_counter){
-			while(!notified) 
-				cond_all_done.wait(lock);
-			std::cout<<"Got "<<job_done_counter<<" of "<<found_destinations<<" results"<<std::endl;
-			notified = false;
-		}
-		ios.stop();
-		for(auto& t:pool)
-			t.join();
-	} else {
-		format_html_body(responce_body_os, "All of specfied destintaions is unreachable", 400);
+	
+	if(urls.empty()) {
+		format_html_body(responce_body_os, "Could not match any of specified destinations", 400);
 		return 400;
 	}
+
+	query_results_t session_records = do_the_parallel_query(urls, query_string);
 	 
 	format_html_query_results_body(responce_body_os, session_records);
 	return 200;

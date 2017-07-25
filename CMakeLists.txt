@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 2.8.9)
 project (rubikon_test_task)
 set (CMAKE_CXX_STANDARD 11)
-set( CMAKE_BUILD_TYPE Debug)
+set( CMAKE_BUILD_TYPE Release)
 file(GLOB SOURCES "src/*.cpp")
 add_executable(rubikon_test_task ${SOURCES})
 
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
-set(CMAKE_CXX_FLAGS "-O0 -g -ggdb")
+#set(CMAKE_CXX_FLAGS "-O0 -g -ggdb")
 find_package (Threads)
 target_link_libraries (rubikon_test_task ${CMAKE_THREAD_LIBS_INIT})
 

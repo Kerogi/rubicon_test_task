@@ -53,7 +53,8 @@ R"(<html>
   </head>
   <body>
     <h3>Query: )" << query_res.query_string << R"(</h3>
-    <ul>)";
+    <ul>
+)";
 	for (const auto &res : query_res.found_records)
 	{
 		ss_html_body <<"    " << record_to_html(res) << "\n";
