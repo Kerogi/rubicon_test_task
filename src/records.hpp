@@ -6,8 +6,8 @@
 #include <boost/property_tree/ptree_fwd.hpp>
 
 struct data_record_t {
-  std::string key;
-  std::string data;
+    std::string key;
+    std::string data;
 };
 
 struct partial_key {
@@ -41,27 +41,28 @@ struct partial_key {
 
 using records_t = std::map<partial_key, data_record_t>;
 
+extern records_t global_records;
 
 struct query_results_t {
-  std::string query_string;
-  std::vector<data_record_t> found_records;
+    std::string query_string;
+    std::vector<data_record_t> found_records;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const data_record_t& dr) {
-  return os << "{ key: '"<<dr.key<<"', data: '"<<dr.data<<"' }";
+    return os << "{ key: '"<<dr.key<<"', data: '"<<dr.data<<"' }";
 }
 
 inline std::ostream& operator<<(std::ostream& os, const query_results_t& qr) {
-  if(qr.found_records.empty()){
-    os << "{ nothing found for '"<<qr.query_string<<"'}";
-  } else {
-    os << "{ for '"<<qr.query_string<<"' were found:\n";
-    for(const auto& dr: qr.found_records) {
-      os << '\t' << dr << '\n';
-    }
-    os << "}";
-  }
-  return os;
+	if(qr.found_records.empty()){
+		os << "{ nothing found for '"<<qr.query_string<<"'}";
+	} else {
+		os << "{ for '"<<qr.query_string<<"' were found:\n";
+		for(const auto& dr: qr.found_records) {
+			os << '\t' << dr << '\n';
+		}
+		os << "}";
+	}
+	return os;
 }
 
 query_results_t query_records(const std::string& search_key, const records_t& records);

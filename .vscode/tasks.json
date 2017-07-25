@@ -19,10 +19,12 @@
             },
             "problemMatcher": {
                 "owner": "cpp",
-                "fileLocation": "absolute",
+                //"fileLocation": "absolute",
+                "fileLocation": [ "relative", "${workspaceRoot}" ],
                 "pattern":[
                     {
-                       "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                       //"regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                       "regexp": "^/mnt/d/vbox_shared/rubicon_test_task/(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
                         "file": 1,
                         "line": 2,
                         "column": 3,

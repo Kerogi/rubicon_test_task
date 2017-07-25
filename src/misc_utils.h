@@ -10,6 +10,8 @@
 #include <deque>
 #include <iterator>
 
+using dest_map_t = std::map<std::string, std::string>;
+
 namespace quoted_string {
 	inline std::ostream& operator<<(std::ostream& os, const std::string& s) {
 		std::streamsize width = os.width();
