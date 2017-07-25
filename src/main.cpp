@@ -117,9 +117,9 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 
-		global_dest_map["A"] = "localhost:12301";
-		global_dest_map["B"] = "localhost:12302";
-		global_dest_map["C"] = "localhost:12303";
+		global_dest_map["A"] = "localhost:12301/restorans";
+		global_dest_map["B"] = "localhost:12302/restorans";
+		global_dest_map["C"] = "localhost:12303/restorans";
 
 		global_records["Italian"] = {"Italian", "Italian rest 1"};
 		global_records["Itolian"] = {"Itolian", "Itolian rest 2"};

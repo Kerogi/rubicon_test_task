@@ -9,8 +9,10 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/property_tree/info_parser.hpp>
-
-
+#include <boost/asio/io_service.hpp>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 std::map<int, std::string> code_names = {
   {200, "OK"},
   {501, "Not Implemented"},
@@ -170,6 +172,11 @@ size_t write_data(void *buffer, size_t size, size_t nmemb, void *userp)
 query_results_t pull_one_url(CURL *curl, const std::string &url, const std::string &query )
 {
 	query_results_t dst_res {query, {} };
+	std::shared_ptr<CURL> local_curl;
+	if (nullptr == curl) {
+		local_curl.reset(curl_easy_init(), [] (CURL* pcurl) { curl_easy_cleanup(pcurl); });
+		curl = local_curl.get();
+	}
 	if (curl)
 	{
 		CURLcode res;
@@ -231,19 +238,54 @@ int serve_proxy_request(const std::string& request_path, const query_dict_t& req
 	std::vector<std::string> destinations;
 	split(destinations, destinations_string, ",");
 
-	size_t found_destinations = 0;
+	if(destinations.empty()) {
+		format_html_body(responce_body_os, "Empty destination parameter", 400);
+		return 400;
+	}
+    boost::asio::io_service ios;
+	std::vector<std::thread> pool;
+	boost::asio::io_service::work work(ios);
+	auto thread_func = [&ios] (){ios.run();};
+	for(size_t i =0; i < std::min(size_t(4),destinations.size()); ++i){
+		pool.push_back(std::move(std::thread(thread_func)));
+	}
+
+	size_t 					found_destinations = 0;
+	size_t					job_done_counter=0;
+	std::condition_variable cond_all_done;
+	std::mutex				m_results;
+	bool					notified = false;
+	bool					done = false;
 	for (const auto &dest_label : destinations)
 	{
 		dest_map_t::iterator dest_it = global_dest_map.find(dest_label);
 		if (dest_it != global_dest_map.end())
 		{
 			++found_destinations;
-			auto peer_result = pull_one_url(curl.get(), dest_it->second, query_string);
-			session_records.found_records.insert(session_records.found_records.end(), peer_result.found_records.begin(), peer_result.found_records.end());
+			ios.post([&] () {
+				auto peer_result = pull_one_url(NULL, dest_it->second, query_string);
+				std::unique_lock<std::mutex> lock(m_results);
+				session_records.found_records.insert(session_records.found_records.end(), peer_result.found_records.begin(), peer_result.found_records.end());
+				notified = true;
+				++job_done_counter;
+				cond_all_done.notify_one();
+			});
 		}
 	}
 
-	if(found_destinations == 0){
+	if(found_destinations>0)
+	{
+		std::unique_lock<std::mutex> lock(m_results);
+		while(found_destinations != job_done_counter){
+			while(!notified) 
+				cond_all_done.wait(lock);
+			std::cout<<"Got "<<job_done_counter<<" of "<<found_destinations<<" results"<<std::endl;
+			notified = false;
+		}
+		ios.stop();
+		for(auto& t:pool)
+			t.join();
+	} else {
 		format_html_body(responce_body_os, "All of specfied destintaions is unreachable", 400);
 		return 400;
 	}
