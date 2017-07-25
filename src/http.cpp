@@ -1,6 +1,7 @@
 #include <vector>
 #include <algorithm>
 #include <sstream>
+#include <fstream>
 #include <memory>
 #include "http.hpp"
 #include "json.hpp"
@@ -153,6 +154,19 @@ size_t create_http_responce(std::ostream& reply_os, const std::stringbuf& http_b
 	return ss_http.str().length();
 }
 
+//server's simple search query 
+int serve_static_file(const std::string& request_path, std::ostream& responce_body_os) {
+	//cut the prefix '/' and try open file
+	std::ifstream ifs(request_path.substr(1), std::ifstream::in);
+
+  	if (ifs.good()) {
+		responce_body_os << ifs.rdbuf();
+		return 200;
+  	} else {
+		format_html_body(responce_body_os, "Could not find '"+request_path+"'", 404);
+		return 404;
+	} 
+}
 
 //server's simple search query 
 int serve_query_request(const std::string& request_path, const query_dict_t& request_query, std::ostream& responce_body_os) {
@@ -250,8 +264,7 @@ bool serve_http_request(const std::string& request_path, const query_dict_t& req
 		//call a request handler
 		responce_code = handler->second(request_path, request_query, responce_body_os);
 	} else  {
-		format_html_body(responce_body_os, "Cound not find what to do with '<b>"+request_path+"</b>'", 404);
-		responce_code = 404;
+		responce_code = serve_static_file(request_path, responce_body_os);
 	}
 	//basing on responce code (set manually or form request handler)
 	// create a http responce message with corresponding headers
